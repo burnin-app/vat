@@ -1,7 +1,10 @@
 [package]
 name = "vat"
-version.workspace = true
-edition.workspace = true
+version = "0.1.0"
+edition = "2021"
 
 [dependencies]
-url = {workspace = true}
+url = { version = "2.5.4", features = ["serde"] }
+toml = "0.8.21"
+anyhow = "1.0.98"
+serde = {version = "1.0.219", features= ["derive"]}
