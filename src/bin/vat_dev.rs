@@ -1,4 +1,4 @@
-use vat::package::{Package, Vat};
+use vat::Vat;
 use std::path::PathBuf;
 fn main(){
     // let package = Package::new("test".to_string(), "0.1.0".to_string());

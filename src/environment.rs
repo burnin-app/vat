@@ -13,23 +13,9 @@ pub struct Environments{
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EnvVar{
-    pub values: Vec<EnvVarValue>,
+    pub values: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct EnvVarValue{
-    pub value: String,
-    pub action: Option<Action>,
-}
-
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Platform{
-    Win,
-    Linux,
-    MacOs,
-    Unix
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
