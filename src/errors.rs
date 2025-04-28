@@ -5,6 +5,9 @@ pub enum PackageError{
     #[error("InitializationError: {0}")]
     InitalizationError(String),
 
+    #[error("Package already exists: {0}")]
+    PackageAlreadyExists(String),
+
     #[error("Error Reading the package: {0}")]
     ReadError(String),
 

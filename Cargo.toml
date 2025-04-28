@@ -13,3 +13,4 @@ fs2 = "0.4.3"
 semver = {version = "1.0.25", features = ["serde"]}
 thiserror = "2.0.12"
 git2 = "0.20.1"
+console = "0.15.11"

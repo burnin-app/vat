@@ -26,7 +26,6 @@ pub struct Vat{
 
 impl Vat{
     pub fn new(package: Package) -> Self{
-
         let vat = Vat{
             package_path: PathBuf::new(),
             package,
@@ -34,19 +33,10 @@ impl Vat{
             cmd: None,
             dependencies: None,
         };
-
         vat
     }
 
-    pub fn init(path: PathBuf, create: bool) -> PackageResult<()>{
-
-        if !create{
-            if !path.exists(){
-                return Err(PackageError::PackageNotFound(path.to_string_lossy().to_string()));
-            }
-        }else{
-            std::fs::create_dir_all(&path)?;
-        }
+    pub fn init(path: PathBuf, create: bool) -> PackageResult<Vat>{
 
         let package_name = path.file_name();
         if package_name.is_none(){
@@ -56,15 +46,31 @@ impl Vat{
         let package_name = package_name.unwrap().to_string_lossy().to_string();
         let package = Package::new(package_name);
 
-        let _ = Git::init(path)?;
-        let vat = Vat::new(package);
+        let mut vat = Vat::new(package);
+        vat.package_path = path.clone();
+        if vat.is_package(){
+            let path = path.join(VAT_FILE);
+            return Err(PackageError::PackageAlreadyExists(path.to_string_lossy().to_string()));
+        }else{
 
-        vat.save()?;
+            if !create{
+                if !path.exists(){
+                    return Err(PackageError::PackageNotFound(path.to_string_lossy().to_string()));
+                }
+            }else{
+                std::fs::create_dir_all(&path)?;
+            }
 
-        Ok(())
+            let _ = Git::init(path.clone())?;
+            vat.save()?;
+            return Ok(vat);
+        }
+
     }
 
-
+    pub fn is_package(&self) -> bool{
+        self.package_path.join(VAT_FILE).exists()
+    }
 
     pub fn read(path: PathBuf) -> PackageResult<Vat> {
         let vat_toml_path = path.join(VAT_FILE);
