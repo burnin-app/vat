@@ -38,6 +38,9 @@ pub type PackageResult<T> = std::result::Result<T, PackageError>;
 pub enum GitError{
     #[error("Error initializing the repository: {0}")]
     InitError(#[from] git2::Error),
+
+    #[error("Error writing the file: {0}")]
+    Io(#[from] std::io::Error),
 }
 
 

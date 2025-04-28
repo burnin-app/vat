@@ -112,5 +112,9 @@ impl Vat{
         Ok(self.clone())
     }
 
+    pub fn get_package_path(&self) -> PathBuf{
+        self.package_path.clone()
+    }
+
 
 }
