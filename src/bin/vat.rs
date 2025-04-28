@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
-use vat::{Vat, Git};
+use std::process::Command;
+use vat::Vat;
 use vat::console::Console;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -23,7 +24,16 @@ enum Commands {
     },
     #[command(name = "cat", about = "Read a Vat package")]
     Cat,
-    Up
+    #[command(name = "up", about = "Increment the version of a Vat package, commit and create a new git tag")]
+    Up{
+            #[arg(short = 'M', long, help = "Increment the major version")]
+            major:bool,
+            #[arg(short = 'm', long, help = "Increment the minor version")]
+            minor:bool,
+            #[arg(short = 'p', long, help = "Increment the patch version")]
+            patch:bool,
+        },
+    Test
 }
 
 
@@ -68,25 +78,36 @@ fn main() -> Result<(), anyhow::Error> {
                 }
             }
         }
-        Some(Commands::Up) => {
+        Some(Commands::Up { major, minor, patch }) => {
             let current_dir = std::env::current_dir()?;
             let output = Vat::read(current_dir);
             match output{
-                Ok(vat) => {
-                    let git = Git::init(vat.get_package_path());
-                    let git = git.unwrap();
-                    let tags = git.get_semver_tags();
-                    let latest_tag = git.get_latest_semver_tag();
-                    dbg!(tags);
-                    dbg!(latest_tag);
+                Ok(mut vat) => {
+                    vat.up(major, minor, patch)?;
                 }
                 Err(e) => {
                     Console::error(&e.to_string());
                 }
             }
         }
+        Some(Commands::Test) => {
+            let output = Command::new("git")
+                .arg("config")
+                .arg("--global")
+                .arg("user.name")
+                .output()
+                .expect("failed to execute git command");
+
+            if output.status.success() {
+                let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                println!("{}", value);
+                if !value.is_empty() {
+                    println!("{}", value);
+                }
+            }
+        }
         None => {
-            println!("No command provided again");
+            println!("No command provided");
         }
     }
 

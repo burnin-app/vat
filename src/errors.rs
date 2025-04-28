@@ -41,6 +41,9 @@ pub enum GitError{
 
     #[error("Error writing the file: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("Error executing the git command: {0}")]
+    CommandError(String),
 }
 
 
