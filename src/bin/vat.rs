@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use vat::Vat;
+use vat::{Vat, Git};
 use vat::console::Console;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -21,6 +21,9 @@ enum Commands {
     New{
         name: String,
     },
+    #[command(name = "cat", about = "Read a Vat package")]
+    Cat,
+    Up
 }
 
 
@@ -47,6 +50,35 @@ fn main() -> Result<(), anyhow::Error> {
             match output{
                 Ok(_) => {
                     Console::create_package(&name, true);
+                }
+                Err(e) => {
+                    Console::error(&e.to_string());
+                }
+            }
+        }
+        Some(Commands::Cat) => {
+            let current_dir = std::env::current_dir()?;
+            let output = Vat::read(current_dir);
+            match output{
+                Ok(vat) => {
+                    println!("{:#?}", vat);
+                }
+                Err(e) => {
+                    Console::error(&e.to_string());
+                }
+            }
+        }
+        Some(Commands::Up) => {
+            let current_dir = std::env::current_dir()?;
+            let output = Vat::read(current_dir);
+            match output{
+                Ok(vat) => {
+                    let git = Git::init(vat.get_package_path());
+                    let git = git.unwrap();
+                    let tags = git.get_semver_tags();
+                    let latest_tag = git.get_latest_semver_tag();
+                    dbg!(tags);
+                    dbg!(latest_tag);
                 }
                 Err(e) => {
                     Console::error(&e.to_string());
