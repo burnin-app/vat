@@ -6,9 +6,9 @@ fn main(){
     // vat.save(&PathBuf::from("Z:\\temp"));
 
     // read
-    let vat = Vat::read(&PathBuf::from("Z:\\temp"));
+    // let vat = Vat::read(&PathBuf::from("Z:\\temp"));
     // let vat = vat.unwrap();
     // vat.save(&PathBuf::from("Z:\\temp"));
-    println!("{:?}", vat);
+    // println!("{:?}", vat);
 
 }
