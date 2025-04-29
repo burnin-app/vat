@@ -84,6 +84,8 @@ fn main() -> Result<(), anyhow::Error> {
             match output{
                 Ok(mut vat) => {
                     vat.up(major, minor, patch)?;
+                    let message = format!("Vat package updated to {}", vat.package.version);
+                    Console::success(&message);
                 }
                 Err(e) => {
                     Console::error(&e.to_string());
