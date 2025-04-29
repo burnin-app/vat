@@ -33,6 +33,29 @@ pub enum PackageError{
 pub type PackageResult<T> = std::result::Result<T, PackageError>;
 
 
+#[derive(Error, Debug)]
+pub enum RepositoryError{
+    #[error("Repository not found: {0}")]
+    RepositoryNotFound(String),
+
+    #[error("Error reading the repository: {0}")]
+    ReadError(String),
+
+    #[error("Error writing the repository: {0}")]
+    WriteError(#[from] std::io::Error),
+
+    #[error("Error parsing the repository: {0}")]
+    ParseError(#[from] toml::de::Error),
+
+    #[error("Error serializing the repository: {0}")]
+    SerializeError(#[from] toml::ser::Error),
+
+    #[error("Error loading the config: {0}")]
+    ConfigError(String),
+}
+
+pub type RepositoryResult<T> = std::result::Result<T, RepositoryError>;
+
 
 #[derive(Error, Debug)]
 pub enum GitError{
@@ -41,6 +64,9 @@ pub enum GitError{
 
     #[error("Error writing the file: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("Error executing the git command: {0}")]
+    CommandError(String),
 }
 
 

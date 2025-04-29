@@ -8,6 +8,7 @@ use std::process::Command;
 
 pub struct Git{
     pub repo: Repository,
+    pub path: PathBuf,
 }
 
 impl Git{
@@ -15,7 +16,7 @@ impl Git{
         let git_path = package_path.join(".git");
         if git_path.exists(){
             let repo = Repository::open(package_path.clone())?;
-            Ok(Self{repo})
+            Ok(Self{repo, path: package_path})
         }else{
             let repo = Repository::init(package_path.clone())?;
 
@@ -28,7 +29,7 @@ impl Git{
             cmd.current_dir(package_path.clone());
             cmd.output()?;
 
-            Ok(Self{repo})
+            Ok(Self{repo, path: package_path})
         }
     }
 
@@ -56,6 +57,56 @@ impl Git{
         let mut file = std::fs::File::create(path).map_err(GitError::Io)?;
         let ignore_raw_stirng ="";
         file.write_all(ignore_raw_stirng.as_bytes()).map_err(GitError::Io)?;
+        Ok(())
+    }
+
+
+    pub fn add_toml(&self) -> GitResult<()>{
+        let status = Command::new("git")
+        .arg("add")
+        .arg("vat.toml")
+        .current_dir(&self.path)
+        .status()
+        .expect("Failed to execute git add");
+
+        if !status.success(){
+            let message = format!("Failed to execute git add: {}", status);
+            return Err(GitError::CommandError(message));
+        }
+
+        Ok(())
+    }
+
+    pub fn commit(&self) -> GitResult<()>{
+        let status = Command::new("git")
+            .arg("commit")
+            .arg("-m")
+            .arg("Increment version")
+            .current_dir(&self.path)
+            .status()
+            .expect("Failed to execute git commit");
+
+        if !status.success(){
+            let message = format!("Failed to execute git commit: {}", status);
+            return Err(GitError::CommandError(message));
+        }
+
+        Ok(())
+    }
+
+    pub fn tag(&self, tag: &str) -> GitResult<()>{
+        let status = Command::new("git")
+            .arg("tag")
+            .arg(tag)
+            .current_dir(&self.path)
+            .status()
+            .expect("Failed to execute git tag");
+
+        if !status.success(){
+            let message = format!("Failed to execute git tag: {}", status);
+            return Err(GitError::CommandError(message));
+        }
+
         Ok(())
     }
 }
