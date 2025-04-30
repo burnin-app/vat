@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::process::Command;
 use vat::Vat;
+use vat::repository::Repository;
 use vat::console::Console;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -33,6 +34,13 @@ enum Commands {
             #[arg(short = 'p', long, help = "Increment the patch version")]
             patch:bool,
         },
+    #[command(name = "publish", about = "Publish a Vat package to the repository")]
+    Publish{
+        #[arg(short = 'm', long, help = "The message to publish the package with")]
+        message: String,
+        // #[arg(short, long)]
+        // remote: bool,
+    },
     Test
 }
 
@@ -105,6 +113,20 @@ fn main() -> Result<(), anyhow::Error> {
                 println!("{}", value);
                 if !value.is_empty() {
                     println!("{}", value);
+                }
+            }
+        }
+        Some(Commands::Publish { message }) => {
+            println!("{}", message);
+            let current_dir = std::env::current_dir()?;
+            let package_read = Vat::read(current_dir);
+            match package_read{
+                Ok(package) => {
+                    let mut repository = Repository::load()?;
+                    repository.publish(package)?;
+                }
+                Err(e) => {
+                    Console::error(&e.to_string());
                 }
             }
         }

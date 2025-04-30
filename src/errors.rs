@@ -50,6 +50,9 @@ pub enum RepositoryError{
     #[error("Error serializing the repository: {0}")]
     SerializeError(#[from] toml::ser::Error),
 
+    #[error("Package already exists: {0}")]
+    PackageAlreadyExists(String),
+
     #[error("Error loading the config: {0}")]
     ConfigError(String),
 }

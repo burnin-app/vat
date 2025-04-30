@@ -15,7 +15,7 @@ const VAT_REPOSITORY_FILE: &str = "vat_repository.toml";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Repository{
-    pub packages: HashMap<String, Vec<RepoPackage>>,
+    pub packages: HashMap<String, PackageRegistry>,
     #[serde(skip)]
     pub repository_path: PathBuf,
 }
@@ -26,6 +26,34 @@ impl Repository{
             packages: HashMap::new(),
             repository_path: PathBuf::new(),
         }
+    }
+
+    pub fn get_package(&self, package_name: &str) -> Option<&PackageRegistry>{
+        self.packages.get(package_name)
+    }
+
+    pub fn publish(&mut self, package: Vat) -> RepositoryResult<()>{
+        if self.package_exists(&package.package.name, &package.package.version){
+            return Err(RepositoryError::PackageAlreadyExists(format!("Package {} version {} already exists", package.package.name, package.package.version)));
+        }
+
+        let mut repo_package = RepoPackage::from_vat(package);
+        let package_path = self.repository_path.join(repo_package.name.clone());
+        if !package_path.exists(){
+            std::fs::create_dir_all(&package_path)?;
+        }
+        repo_package.package_path = package_path;
+        self.packages.entry(repo_package.name.clone())
+            .or_insert_with(PackageRegistry::new)
+            .add_package(repo_package);
+
+        // self.save()?;
+        dbg!(&self);
+        Ok(())
+    }
+
+    pub fn package_exists(&self, package_name: &str, version: &Version) -> bool{
+        self.packages.contains_key(package_name) && self.packages[package_name].packages.contains_key(version)
     }
 
     pub fn load() -> RepositoryResult<Repository>{
@@ -88,6 +116,25 @@ impl Repository{
         
         Ok(self.clone())
     }
+}
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PackageRegistry{
+    pub packages: HashMap<Version, RepoPackage>
+}
+
+impl PackageRegistry{
+    pub fn new() -> Self{
+        Self{
+            packages: HashMap::new(),
+        }
+    }
+
+    pub fn add_package(&mut self, package: RepoPackage){
+        self.packages.insert(package.version.clone(), package);
+    }
+
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
