@@ -1,10 +1,13 @@
+use crate::errors::GitResult;
+use crate::errors::GitError;
+use crate::console::Console;
+
+use std::fs;
+use semver::Version;
+use std::process::Command;
 use git2::Repository;
 use std::path::PathBuf;
 use std::io::Write;
-use crate::errors::GitResult;
-use crate::errors::GitError;
-use semver::Version;
-use std::process::Command;
 
 pub struct Git{
     pub repo: Repository,
@@ -106,6 +109,44 @@ impl Git{
             let message = format!("Failed to execute git tag: {}", status);
             return Err(GitError::CommandError(message));
         }
+
+        Ok(())
+    }
+
+    pub fn zip_tag(&self, package_version: Version, package_path: PathBuf, repository_path: PathBuf) -> GitResult<()>{
+
+        let zip_file_name = format!("{}-package.zip", &package_version);
+
+        Console::info(&format!("Zipping package version: {}", &package_version));
+        Console::dim(&format!("This might take a while..."));
+
+        // create zip from git version
+        // "git archive --format=zip -o archive.zip 0.0.3"
+        let _command = std::process::Command::new("git")
+            .arg("archive")
+            .arg("--format=zip")
+            .arg("-o")
+            .arg(&zip_file_name)
+            .arg(package_version.to_string())
+            .current_dir(&package_path)
+            .status()
+            .expect("Failed to create zip file");
+
+        // copy zip file to repository
+        let mut copy_options = fs_extra::dir::CopyOptions::new();
+        copy_options.overwrite = true;
+        copy_options.copy_inside = true;
+
+        if !repository_path.exists(){
+            fs::create_dir_all(&repository_path)?;
+        }
+
+        let source_zip_file_path = package_path.join(zip_file_name);
+        let repo_package_version_path = repository_path.join(package_version.to_string());
+
+        let file = std::fs::File::open(&source_zip_file_path)?;
+        let mut archive = zip::read::ZipArchive::new(file)?;
+        archive.extract(repo_package_version_path)?;
 
         Ok(())
     }

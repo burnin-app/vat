@@ -67,6 +67,9 @@ pub enum GitError{
 
     #[error("Error executing the git command: {0}")]
     CommandError(String),
+
+    #[error("Error zipping the package: {0}")]
+    ZipError(#[from] zip::result::ZipError),
 }
 
 
