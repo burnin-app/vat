@@ -71,9 +71,8 @@ impl Vat{
     }
 
 
-    pub fn up(&mut self, major: bool, minor: bool, patch: bool) -> PackageResult<Self>{
+    pub fn up_prompt(&mut self, major: bool, minor: bool, patch: bool) -> PackageResult<()>{
         let git = Git::init(self.package_path.clone());
-
         if git.is_err(){
             let error = git.err().unwrap();
             Console::error(&error.to_string());
@@ -82,19 +81,36 @@ impl Vat{
         let git = git.unwrap();
         let latest_tag = git.get_latest_semver_tag()?;
 
-        let mut vat = self.clone();
+        // set the latest tag as the current version
         if latest_tag != None{
-            vat.increment_version(major, minor, patch);
-            vat.save()?;
+            self.package.version = latest_tag.unwrap();
+            self.increment_version(major, minor, patch);
+        }else{
+            self.package.version = semver::Version::new(0, 0, 0);
+            self.increment_version(major, minor, patch);
         }
 
+        Ok(())
+    }
+
+
+    pub fn up(&mut self, commit_message: &str) -> PackageResult<()>{
+        let git = Git::init(self.package_path.clone());
+
+        if git.is_err(){
+            let error = git.err().unwrap();
+            Console::error(&error.to_string());
+            return Err(PackageError::GitError(error));
+        }
+        let git = git.unwrap();
+
         // commit vat.toml file
+        self.save()?;
         git.add_toml()?;
-        git.commit()?;
-        git.tag(&vat.package.version.to_string())?;
+        git.commit(commit_message)?;
+        git.tag(&self.package.version.to_string(), commit_message)?;
 
-        return Ok(vat);
-
+        Ok(())
     }
 
 
@@ -160,10 +176,10 @@ impl Vat{
 
         if major {
             // Increment major version and reset minor and patch
-            self.package.version = semver::Version::new(major_version + 1, 0, 0);
+            self.package.version = semver::Version::new(major_version + 1, 0, patch_version);
         } else if minor {
             // Increment minor version and reset patch
-            self.package.version = semver::Version::new(major_version, minor_version + 1, 0);
+            self.package.version = semver::Version::new(major_version, minor_version + 1, patch_version);
         } else if patch{
             // Increment patch version
             self.package.version = semver::Version::new(major_version, minor_version, patch_version + 1);
