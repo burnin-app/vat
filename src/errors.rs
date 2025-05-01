@@ -55,6 +55,12 @@ pub enum RepositoryError{
 
     #[error("Error loading the config: {0}")]
     ConfigError(String),
+
+    #[error("Error publishing the package: {0}")]
+    PublishError(String),
+
+    #[error("Git Error: {0}")]
+    GitError(#[from] GitError),
 }
 
 pub type RepositoryResult<T> = std::result::Result<T, RepositoryError>;
@@ -73,6 +79,9 @@ pub enum GitError{
 
     #[error("Error zipping the package: {0}")]
     ZipError(#[from] zip::result::ZipError),
+
+    #[error("Error getting the tag message: {0}")]
+    TagMessageError(String),
 }
 
 

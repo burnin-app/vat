@@ -86,14 +86,33 @@ fn main() -> Result<(), anyhow::Error> {
                 }
             }
         }
-        Some(Commands::Up { major, minor, patch }) => {
+        Some(Commands::Up { major, mut minor, patch }) => {
             let current_dir = std::env::current_dir()?;
             let output = Vat::read(current_dir);
+
+            if major == false && minor == false && patch == false {
+                minor = true;
+            }
+
             match output{
                 Ok(mut vat) => {
-                    vat.up(major, minor, patch)?;
-                    let message = format!("Vat package updated to {}", vat.package.version);
-                    Console::success(&message);
+                    vat.up_prompt(major, minor, patch)?;
+                    let new_version = vat.package.version.clone();
+
+                    Console::info(&format!("Do you want to update the vat package to the version {}? (y/n)", new_version));
+                    let mut input = String::new();
+                    std::io::stdin().read_line(&mut input)?;
+                    if input.trim().to_lowercase() == "y" {
+
+                        // get the commit message
+                        Console::info("Enter the commit message");
+                        let mut commit_message = String::new();
+                        std::io::stdin().read_line(&mut commit_message)?;
+
+                        vat.up(&commit_message)?;
+                        let message = format!("Vat package updated to {}", vat.package.version);
+                        Console::success(&message);
+                    }
                 }
                 Err(e) => {
                     Console::error(&e.to_string());
@@ -117,13 +136,20 @@ fn main() -> Result<(), anyhow::Error> {
             }
         }
         Some(Commands::Publish { message }) => {
-            println!("{}", message);
             let current_dir = std::env::current_dir()?;
             let package_read = Vat::read(current_dir);
             match package_read{
                 Ok(package) => {
                     let mut repository = Repository::load()?;
-                    repository.publish(package)?;
+                    let publish_result = repository.publish(package, &message);
+                    match publish_result{
+                        Ok(_) => {
+                            Console::success(&format!("Package published successfully to the repository"));
+                        }
+                        Err(e) => {
+                            Console::error(&e.to_string());
+                        }
+                    }
                 }
                 Err(e) => {
                     Console::error(&e.to_string());

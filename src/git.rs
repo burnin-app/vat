@@ -80,11 +80,11 @@ impl Git{
         Ok(())
     }
 
-    pub fn commit(&self) -> GitResult<()>{
+    pub fn commit(&self, message: &str) -> GitResult<()>{
         let status = Command::new("git")
             .arg("commit")
             .arg("-m")
-            .arg("Increment version")
+            .arg(message)
             .current_dir(&self.path)
             .status()
             .expect("Failed to execute git commit");
@@ -97,10 +97,12 @@ impl Git{
         Ok(())
     }
 
-    pub fn tag(&self, tag: &str) -> GitResult<()>{
+    pub fn tag(&self, tag: &str, message: &str) -> GitResult<()>{
         let status = Command::new("git")
             .arg("tag")
             .arg(tag)
+            .arg("-m")
+            .arg(message)
             .current_dir(&self.path)
             .status()
             .expect("Failed to execute git tag");
@@ -112,6 +114,24 @@ impl Git{
 
         Ok(())
     }
+
+
+    pub fn get_tag_message(&self, tag: &str) -> GitResult<String>{
+        let status = Command::new("git")
+            .arg("tag")
+            .arg("-l")
+            .arg(tag)
+            .current_dir(&self.path)
+            .output()?;
+
+        dbg!(&status);
+        let message = String::from_utf8(status.stdout);
+        match message{
+            Ok(message) => Ok(message),
+            Err(e) => Err(GitError::TagMessageError(e.to_string())),
+        }
+    }
+
 
     pub fn zip_tag(&self, package_version: Version, package_path: PathBuf, repository_path: PathBuf) -> GitResult<()>{
 
@@ -147,6 +167,9 @@ impl Git{
         let file = std::fs::File::open(&source_zip_file_path)?;
         let mut archive = zip::read::ZipArchive::new(file)?;
         archive.extract(repo_package_version_path)?;
+
+        // clean up the source zip file
+        std::fs::remove_file(&source_zip_file_path)?;
 
         Ok(())
     }

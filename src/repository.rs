@@ -10,6 +10,7 @@ use std::io::Write;
 use crate::Vat;
 use crate::config::VatConfig;
 use crate::errors::{RepositoryError, RepositoryResult};
+use crate::git::Git;
 
 const VAT_REPOSITORY_FILE: &str = "vat_repository.toml";
 
@@ -32,28 +33,56 @@ impl Repository{
         self.packages.get(package_name)
     }
 
-    pub fn publish(&mut self, package: Vat) -> RepositoryResult<()>{
+    pub fn publish(&mut self, package: Vat, message: &str) -> RepositoryResult<()>{
         if self.package_exists(&package.package.name, &package.package.version){
-            return Err(RepositoryError::PackageAlreadyExists(format!("Package {} version {} already exists", package.package.name, package.package.version)));
+            return Err(RepositoryError::PackageAlreadyExists(format!("Package {} version {} has been published", package.package.name, package.package.version)));
         }
 
-        let mut repo_package = RepoPackage::from_vat(package);
+        let git = Git::init(package.package_path.clone())?;
+
+        let mut repo_package = RepoPackage::from_vat(package.clone());
         let package_path = self.repository_path.join(repo_package.name.clone());
         if !package_path.exists(){
             std::fs::create_dir_all(&package_path)?;
         }
+
         repo_package.package_path = package_path;
+        repo_package.message = Some(message.to_string());
+
+        // link the package to the repoistiory
         self.packages.entry(repo_package.name.clone())
-            .or_insert_with(PackageRegistry::new)
+            .or_insert_with(|| PackageRegistry::new())
+            .link_package(package.package_path.clone());
+
+        self.packages.entry(repo_package.name.clone())
+            .or_insert_with(|| PackageRegistry::new())
             .add_package(repo_package);
 
-        // self.save()?;
-        dbg!(&self);
+        let repo_package_path = self.repository_path.join(package.package.name.clone());
+        git.zip_tag(package.package.version, package.package_path.clone(), repo_package_path)?;
+        self.save()?;
         Ok(())
     }
 
+
+    pub fn link_package(&mut self, package: Vat) -> RepositoryResult<()>{
+        self.packages.entry(package.package.name.clone())
+            .or_insert_with(|| PackageRegistry::new())
+            .link_package(package.package_path.clone());
+
+        self.save()?;
+        Ok(())
+    }
+
+
+
     pub fn package_exists(&self, package_name: &str, version: &Version) -> bool{
-        self.packages.contains_key(package_name) && self.packages[package_name].packages.contains_key(version)
+        if self.packages.contains_key(package_name){
+            if self.packages[package_name].versions.contains_key(version){
+                return true;
+            }
+        }
+        false
     }
 
     pub fn load() -> RepositoryResult<Repository>{
@@ -68,10 +97,7 @@ impl Repository{
 
         // NOT SURE IF THIS IS THE BEST WAY TO HANDLE THIS
         // TODO: Find a better way to handle this
-        let repository_read_result = repository.read();
-        if repository_read_result.is_err(){
-            repository.save()?;
-        }
+        let repository = repository.read()?;
 
         Ok(repository)
     }
@@ -121,18 +147,24 @@ impl Repository{
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PackageRegistry{
-    pub packages: HashMap<Version, RepoPackage>
+    pub main_brach_path: PathBuf,
+    pub versions: HashMap<Version, RepoPackage>,
 }
 
 impl PackageRegistry{
     pub fn new() -> Self{
         Self{
-            packages: HashMap::new(),
+            main_brach_path: PathBuf::new(),
+            versions: HashMap::new(),
         }
     }
 
     pub fn add_package(&mut self, package: RepoPackage){
-        self.packages.insert(package.version.clone(), package);
+        self.versions.insert(package.version.clone(), package);
+    }
+
+    pub fn link_package(&mut self, main_brach_path: PathBuf){
+        self.main_brach_path = main_brach_path;
     }
 
 }
@@ -142,8 +174,8 @@ pub struct RepoPackage{
     pub name: String,
     pub version: Version,
     pub package_path: PathBuf,
-    pub main_path: PathBuf,
     pub repository: Option<Url>,
+    pub message: Option<String>,
 }
 
 impl RepoPackage{
@@ -153,8 +185,8 @@ impl RepoPackage{
             name: vat.package.name,
             version: vat.package.version,
             package_path: PathBuf::from(""),
-            main_path: vat.package_path,
             repository: vat.package.repository,
+            message: None,
         }
     }
 
