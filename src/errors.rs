@@ -28,6 +28,9 @@ pub enum PackageError{
 
     #[error("Git Error: {0}")]
     GitError(#[from] GitError),
+
+    #[error("Command not found: {0}")]
+    CommandNotFound(String),
 }
 
 pub type PackageResult<T> = std::result::Result<T, PackageError>;

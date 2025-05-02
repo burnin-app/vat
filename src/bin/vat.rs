@@ -41,7 +41,11 @@ enum Commands {
         // #[arg(short, long)]
         // remote: bool,
     },
-    Test
+    #[command(name = "run", about = "Run a Vat package")]
+    Run{
+        name: String,
+    },
+    Test,
 }
 
 
@@ -120,18 +124,14 @@ fn main() -> Result<(), anyhow::Error> {
             }
         }
         Some(Commands::Test) => {
-            let output = Command::new("git")
-                .arg("config")
-                .arg("--global")
-                .arg("user.name")
-                .output()
-                .expect("failed to execute git command");
-
-            if output.status.success() {
-                let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                println!("{}", value);
-                if !value.is_empty() {
-                    println!("{}", value);
+            let current_dir = std::env::current_dir()?;
+            let output = Vat::read(current_dir);
+            match output{
+                Ok(mut vat) => {
+                    vat.resolve_env()?;
+                }
+                Err(e) => {
+                    Console::error(&e.to_string());
                 }
             }
         }
@@ -150,6 +150,20 @@ fn main() -> Result<(), anyhow::Error> {
                             Console::error(&e.to_string());
                         }
                     }
+                }
+                Err(e) => {
+                    Console::error(&e.to_string());
+                }
+            }
+        }
+        Some(Commands::Run { name }) => {
+            let current_dir = std::env::current_dir()?;
+            let output = Vat::read(current_dir);
+            match output{
+                Ok(mut vat) => {
+                    vat.resolve_env()?;
+                    dbg!(&vat.resolved_env);
+                    vat.run(&name)?;
                 }
                 Err(e) => {
                     Console::error(&e.to_string());

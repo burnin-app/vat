@@ -9,7 +9,7 @@ pub struct Environments{
     #[serde(flatten)]
     pub global: HashMap<String, EnvVar>,
 } 
-    
+
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EnvVar{

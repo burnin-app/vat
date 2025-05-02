@@ -4,10 +4,11 @@ use std::io::Write;
 use fs2::FileExt;
 use std::fs::OpenOptions;
 use semver::Version;
+use std::collections::HashMap;
 
 use crate::command::Commands;
 use crate::package::Package;
-use crate::environment::Environments;
+use crate::environment::{Environments, EnvVar};
 use crate::dependencies::Dependency;
 use crate::errors::{PackageResult, PackageError};
 use crate::git::Git;
@@ -23,6 +24,8 @@ pub struct Vat{
     pub env: Option<Environments>,
     pub cmd: Option<Commands>,
     pub dependencies: Option<Vec<Dependency>>,
+    #[serde(skip)]  
+    pub resolved_env: HashMap<String, String>,
 }
 
 
@@ -34,6 +37,7 @@ impl Vat{
             env: None,
             cmd: None,
             dependencies: None,
+            resolved_env: HashMap::new(),
         };
         vat
     }
@@ -184,6 +188,104 @@ impl Vat{
             // Increment patch version
             self.package.version = semver::Version::new(major_version, minor_version, patch_version + 1);
         } 
+    }
+
+
+    pub fn resolve_env(&mut self) -> PackageResult<()>{
+        // current os
+        let current_os = std::env::consts::OS;
+        let mut resolved_env = HashMap::new();
+
+        let dilimeter = if current_os == "windows"{
+            ";"
+        }else{
+            ":"
+        };
+
+        if let Some(env) = &self.env{
+            // process global env
+            for (key, env_var) in &env.global{
+                self.process_env(key, env_var,&mut resolved_env, &dilimeter);
+            }
+
+            // process macos
+            if current_os == "macos"{
+                if let Some(macos_env) = &env.macos{
+                    for (key, env_var) in macos_env{
+                        self.process_env(key, env_var,&mut resolved_env, &dilimeter);
+                    }
+                }
+            }else if current_os == "windowsi"{
+                if let Some(windows_env) = &env.windows{
+                    for (key, env_var) in windows_env{
+                        self.process_env(key, env_var,&mut resolved_env, &dilimeter);
+                    }
+                }
+            }else if current_os == "linuxk"{
+                if let Some(linux_env) = &env.linux{
+                    for (key, env_var) in linux_env{
+                        self.process_env(key, env_var,&mut resolved_env, &dilimeter);
+                    }
+                }
+            }
+        }
+
+        self.resolved_env = resolved_env;
+        Ok(())
+    }
+
+
+    pub fn run(&self, command_name: &str) -> PackageResult<()>{
+        if let Some(cmd) = &self.cmd{
+            let command = cmd.get_command(command_name);
+            if let Some(command) = command{
+                dbg!(&command);
+                let mut command = std::process::Command::new(command);
+                command.envs(&self.resolved_env);
+                command.output()?;
+                Console::success("Command executed successfully");
+                Ok(())
+            }else{
+                Err(PackageError::CommandNotFound(command_name.to_string()))
+            }
+        }else{
+            Err(PackageError::CommandNotFound(command_name.to_string()))
+        }
+    }
+
+
+
+    pub fn process_env(&self,key:&String, env_var: &EnvVar, resolved_env: &mut HashMap<String, String>, dilimeter: &str){
+        for value in &env_var.values{
+            let existing_env_values = if resolved_env.contains_key(key){
+                resolved_env.get(key).unwrap().clone()
+            }else{
+                std::env::var(key).unwrap_or_default()
+            };
+
+            let value = self.path_resolve(value);
+            if value.starts_with("append:"){
+                let value = value.replace("append:", "");
+                resolved_env.insert(key.clone(), format!("{}{}{}", existing_env_values, dilimeter, value));
+            }else if value.starts_with("prepend:"){
+                let value = value.replace("prepend:", "");
+                resolved_env.insert(key.clone(), format!("{}{}{}", value, dilimeter, existing_env_values));
+            }else if value.starts_with("set:"){
+                let value = value.replace("set:", "");
+                resolved_env.insert(key.clone(), value);
+            }else{
+                resolved_env.insert(key.clone(), format!("{}{}{}", existing_env_values, dilimeter, value));
+            }
+        }
+    }
+
+    pub fn path_resolve(&self, path: &str) -> String{
+        if path.contains("{root}"){
+            let root = self.package_path.clone();
+            path.replace("{root}", &root.to_string_lossy().to_string())
+        }else{
+            path.to_string()
+        }
     }
 
 
