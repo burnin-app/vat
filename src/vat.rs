@@ -5,6 +5,7 @@ use fs2::FileExt;
 use std::fs::OpenOptions;
 use semver::Version;
 use std::collections::HashMap;
+use dirs;
 
 use crate::command::Commands;
 use crate::package::Package;
@@ -13,6 +14,7 @@ use crate::dependencies::Dependency;
 use crate::errors::{PackageResult, PackageError};
 use crate::git::Git;
 use crate::console::Console;
+use crate::variables::Variables;
 
 const VAT_FILE: &str = "vat.toml";  
 
@@ -21,6 +23,7 @@ pub struct Vat{
     #[serde(skip)]
     pub package_path: PathBuf,
     pub package: Package,
+    pub variables: Option<Variables>,
     pub env: Option<Environments>,
     pub cmd: Option<Commands>,
     pub dependencies: Option<Vec<Dependency>>,
@@ -34,6 +37,7 @@ impl Vat{
         let vat = Vat{
             package_path: PathBuf::new(),
             package,
+            variables: None,
             env: None,
             cmd: None,
             dependencies: None,
@@ -235,16 +239,39 @@ impl Vat{
     }
 
 
-    pub fn run(&self, command_name: &str) -> PackageResult<()>{
+    pub fn run(&self, command_name: &str, detach: bool) -> PackageResult<()>{
         if let Some(cmd) = &self.cmd{
             let command = cmd.get_command(command_name);
             if let Some(command) = command{
-                dbg!(&command);
-                let mut command = std::process::Command::new(command);
-                command.envs(&self.resolved_env);
-                command.output()?;
-                Console::success("Command executed successfully");
-                Ok(())
+                let length = command.len();
+                if length > 0 {
+                    let first_commnad = command.first();
+                    if let Some(first_commnad) = first_commnad{
+                        let mut command_process = std::process::Command::new(first_commnad);
+                        for arg in &command[1..] {
+                            command_process.arg(arg);
+                        }
+                        let mut resolved_env = self.resolved_env.clone();
+                        #[cfg(target_os = "macos")]
+                        {
+                            if let Some(path) = resolved_env.get_mut("PATH") {
+                                *path = expand_tilde_in_path(path);
+                            }
+                        }
+                        command_process.envs(&resolved_env);
+                        if detach{
+                            command_process.spawn()?;
+                        }else{
+                            command_process.output()?;
+                        }
+                        Console::success("Command executed successfully");
+                        Ok(())
+                    }else{
+                        Err(PackageError::CommandNotFound(command_name.to_string()))
+                    }
+                }else{
+                    Err(PackageError::CommandNotFound(command_name.to_string()))
+                }
             }else{
                 Err(PackageError::CommandNotFound(command_name.to_string()))
             }
@@ -289,4 +316,18 @@ impl Vat{
     }
 
 
+}
+
+fn expand_tilde_in_path(path: &str) -> String {
+    let home = dirs::home_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+    path.split(':')
+        .map(|p| {
+            if p.starts_with("~") {
+                p.replacen("~", &home, 1)
+            } else {
+                p.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(":")
 }

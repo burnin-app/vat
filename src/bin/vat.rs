@@ -1,7 +1,6 @@
 use clap::{Parser, Subcommand};
-use std::process::Command;
 use vat::Vat;
-use vat::repository::Repository;
+use vat::repository::{Repository, PackageName};
 use vat::console::Console;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -44,6 +43,10 @@ enum Commands {
     #[command(name = "run", about = "Run a Vat package")]
     Run{
         name: String,
+        #[arg(long="package", short='p', help = "The package to run the command in")]
+        package: Option<String>,
+        #[arg(short, long, default_value = "false")]
+        detach: bool,
     },
     Test,
 }
@@ -124,16 +127,8 @@ fn main() -> Result<(), anyhow::Error> {
             }
         }
         Some(Commands::Test) => {
-            let current_dir = std::env::current_dir()?;
-            let output = Vat::read(current_dir);
-            match output{
-                Ok(mut vat) => {
-                    vat.resolve_env()?;
-                }
-                Err(e) => {
-                    Console::error(&e.to_string());
-                }
-            }
+            let repository = Repository::load()?;
+            dbg!(&repository);
         }
         Some(Commands::Publish { message }) => {
             let current_dir = std::env::current_dir()?;
@@ -156,17 +151,38 @@ fn main() -> Result<(), anyhow::Error> {
                 }
             }
         }
-        Some(Commands::Run { name }) => {
+        Some(Commands::Run { name, package, detach }) => {
             let current_dir = std::env::current_dir()?;
-            let output = Vat::read(current_dir);
-            match output{
-                Ok(mut vat) => {
-                    vat.resolve_env()?;
-                    dbg!(&vat.resolved_env);
-                    vat.run(&name)?;
+            if package.is_none(){
+                let output = Vat::read(current_dir);
+                match output{
+                    Ok(mut vat) => {
+                        vat.resolve_env()?;
+                        vat.run(&name, detach)?;
+                    }
+                    Err(e) => {
+                        Console::error(&e.to_string());
+                    }
                 }
-                Err(e) => {
-                    Console::error(&e.to_string());
+            }else{
+                let repository = Repository::load()?;
+                let package_name = package.unwrap();
+                let package_name = PackageName::from_str(&package_name);
+                dbg!(&package_name);
+                let package_registry = repository.get_package_by_package_name(&package_name);
+                if package_registry.is_none(){
+                    Console::error(&format!("Package not found {}", package_name.name));
+                }else{
+                    let package = package_registry.unwrap();
+                    let package_path = package.get_package_path(&package_name);
+                    if package_path.is_none(){
+                        Console::error(&format!("Package not found {}", package_name.name));
+                    }else{
+                        dbg!(&package_path);
+                        let mut vat = Vat::read(package_path.unwrap())?;
+                        vat.resolve_env()?;
+                        vat.run(&name, detach)?;
+                    }
                 }
             }
         }

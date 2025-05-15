@@ -14,6 +14,37 @@ use crate::git::Git;
 
 const VAT_REPOSITORY_FILE: &str = "vat_repository.toml";
 
+
+#[derive(Debug)]
+pub struct PackageName{
+    pub name: String,
+    pub version: Option<Version>
+}
+
+impl PackageName{
+    pub fn from_str(package_name: &str) -> Self{
+        let parts: Vec<&str> = package_name.split('/').collect();
+        if parts.len() == 1{
+            Self{
+                name: parts[0].to_string(),
+                version: None,
+            }
+        }else if parts.len() == 2{
+            Self{
+                name: parts[0].to_string(),
+                version: Some(Version::parse(parts[1]).unwrap()),
+            }
+        }else{
+            Self{
+                name: package_name.to_string(),
+                version: None,
+            }
+        }
+    }
+}
+
+
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Repository{
     pub packages: HashMap<String, PackageRegistry>,
@@ -33,6 +64,10 @@ impl Repository{
         self.packages.get(package_name)
     }
 
+    pub fn get_package_by_package_name(&self, package_name: &PackageName) -> Option<&PackageRegistry>{
+        self.packages.get(&package_name.name)
+    }
+
     pub fn publish(&mut self, package: Vat, message: &str) -> RepositoryResult<()>{
         if self.package_exists(&package.package.name, &package.package.version){
             return Err(RepositoryError::PackageAlreadyExists(format!("Package {} version {} has been published", package.package.name, package.package.version)));
@@ -41,7 +76,7 @@ impl Repository{
         let git = Git::init(package.package_path.clone())?;
 
         let mut repo_package = RepoPackage::from_vat(package.clone());
-        let package_path = self.repository_path.join(repo_package.name.clone());
+        let package_path = self.repository_path.join(repo_package.name.clone()).join(package.package.version.to_string());
         if !package_path.exists(){
             std::fs::create_dir_all(&package_path)?;
         }
@@ -165,6 +200,18 @@ impl PackageRegistry{
 
     pub fn link_package(&mut self, main_brach_path: PathBuf){
         self.main_brach_path = main_brach_path;
+    }
+
+    pub fn get_package_path(&self, package_name: &PackageName) -> Option<PathBuf>{
+        if package_name.version.is_none(){
+            return Some(self.main_brach_path.clone());
+        }else{
+            let version = package_name.version.as_ref().unwrap();
+            if self.versions.contains_key(&version){
+                return Some(self.versions[&version].package_path.clone());
+            }
+        }
+        None
     }
 
 }

@@ -8,6 +8,7 @@ pub mod git;
 pub mod console;
 pub mod repository;
 pub mod config;
+pub mod variables;
 
 pub use package::*;
 pub use environment::*;
@@ -18,3 +19,4 @@ pub use git::*;
 pub use console::*;
 pub use repository::*;
 pub use config::*;
+pub use variables::*;

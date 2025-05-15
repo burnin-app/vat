@@ -41,13 +41,11 @@ impl VatConfig {
             config.packages_path = packages_path;
 
             config.save()?;
-            dbg!("created");
 
         }else{
             let config_str = fs::read_to_string(config_path)?;
             let config_result = toml::from_str(&config_str)?;
             config = config_result;
-            dbg!("read");
         }
 
         if !config.repo_exists(){
