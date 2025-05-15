@@ -45,6 +45,8 @@ enum Commands {
         name: String,
         #[arg(long="package", short='p', help = "The package to run the command in")]
         package: Option<String>,
+        #[arg(long="append", short='a', num_args = 1.., help = "Append packages to the environment")]
+        append: Option<Vec<String>>,
         #[arg(short, long, default_value = "false")]
         detach: bool,
     },
@@ -151,8 +153,14 @@ fn main() -> Result<(), anyhow::Error> {
                 }
             }
         }
-        Some(Commands::Run { name, package, detach }) => {
+        Some(Commands::Run { name, package, append, detach }) => {
             let current_dir = std::env::current_dir()?;
+            let append = if append.is_some(){
+                Some(PackageName::from_vec_str(&append.unwrap()))
+            }else{
+                None
+            };
+
             if package.is_none(){
                 let output = Vat::read(current_dir);
                 match output{
@@ -168,20 +176,13 @@ fn main() -> Result<(), anyhow::Error> {
                 let repository = Repository::load()?;
                 let package_name = package.unwrap();
                 let package_name = PackageName::from_str(&package_name);
-                dbg!(&package_name);
-                let package_registry = repository.get_package_by_package_name(&package_name);
-                if package_registry.is_none(){
-                    Console::error(&format!("Package not found {}", package_name.name));
-                }else{
-                    let package = package_registry.unwrap();
-                    let package_path = package.get_package_path(&package_name);
-                    if package_path.is_none(){
-                        Console::error(&format!("Package not found {}", package_name.name));
-                    }else{
-                        dbg!(&package_path);
-                        let mut vat = Vat::read(package_path.unwrap())?;
-                        vat.resolve_env()?;
-                        vat.run(&name, detach)?;
+                let run_result = repository.run(&package_name, &name, append, detach);
+                match run_result{
+                    Ok(_) => {
+                        Console::success(&format!("Package run successfully"));
+                    }
+                    Err(e) => {
+                        Console::error(&e.to_string());
                     }
                 }
             }

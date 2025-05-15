@@ -194,6 +194,10 @@ impl Vat{
         } 
     }
 
+    pub fn set_resolved_env(&mut self, resolved_env: HashMap<String, String>){
+        self.resolved_env = resolved_env;
+    }
+
 
     pub fn resolve_env(&mut self) -> PackageResult<()>{
         // current os

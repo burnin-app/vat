@@ -15,31 +15,64 @@ use crate::git::Git;
 const VAT_REPOSITORY_FILE: &str = "vat_repository.toml";
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PackageName{
     pub name: String,
-    pub version: Option<Version>
+    pub version: PackageNameVersion
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PackageNameVersion{
+    Version(Version),
+    Latest,
+    Main
 }
 
 impl PackageName{
     pub fn from_str(package_name: &str) -> Self{
+        let package_name = package_name.replace(",", "");
         let parts: Vec<&str> = package_name.split('/').collect();
         if parts.len() == 1{
             Self{
                 name: parts[0].to_string(),
-                version: None,
+                version: PackageNameVersion::Main,
             }
         }else if parts.len() == 2{
-            Self{
-                name: parts[0].to_string(),
-                version: Some(Version::parse(parts[1]).unwrap()),
+            let part_version = parts[1];
+            if part_version == "latest"{
+                Self{
+                    name: parts[0].to_string(),
+                    version: PackageNameVersion::Latest,
+                }
+            }else if part_version == "main"{
+                Self{
+                    name: parts[0].to_string(),
+                    version: PackageNameVersion::Main,
+                }
+            }else{
+                let version = Version::parse(part_version);
+                if version.is_err(){
+                    Self{
+                        name: parts[0].to_string(),
+                        version: PackageNameVersion::Latest,
+                    }
+                }else{
+                    Self{
+                        name: parts[0].to_string(),
+                        version: PackageNameVersion::Version(version.unwrap()),
+                    }
+                }
             }
         }else{
             Self{
                 name: package_name.to_string(),
-                version: None,
+                version: PackageNameVersion::Latest,
             }
         }
+    }
+
+    pub fn from_vec_str(package_name: &Vec<String>) -> Vec<PackageName>{
+        package_name.iter().map(|name| Self::from_str(name)).collect()
     }
 }
 
@@ -177,6 +210,49 @@ impl Repository{
         
         Ok(self.clone())
     }
+
+
+    pub fn run(&self, package_name: &PackageName, command_name: &str, append_env: Option<Vec<PackageName>>, detach: bool) -> RepositoryResult<()>{
+        let package_registry = self.get_package_by_package_name(package_name);
+        if package_registry.is_none(){
+            return Err(RepositoryError::PackageNotFound(format!("Package {} not found", package_name.name)));
+        }
+        let package_registry = package_registry.unwrap();
+        let package_path = package_registry.get_package_path(package_name);
+        if package_path.is_none(){
+            return Err(RepositoryError::PackageNotFound(format!("Package {} not found", package_name.name)));
+        }
+        let package_path = package_path.unwrap();
+        let mut vat = Vat::read(package_path)?;
+        if append_env.is_some(){
+            vat.set_resolved_env(self.resolve_append_env(append_env.unwrap())?);
+        }
+        vat.resolve_env()?;
+        dbg!(&vat.resolved_env);
+        vat.run(command_name, detach)?;
+        Ok(())
+    }
+
+
+    pub fn resolve_append_env(&self, package_names: Vec<PackageName>) -> RepositoryResult<HashMap<String, String>>{
+        let mut resolved_env: HashMap<String, String> = HashMap::new();
+        for package_name in package_names{
+            let package_registry = self.get_package_by_package_name(&package_name);
+            if package_registry.is_none(){
+                return Ok(resolved_env);
+            }
+
+            let package_registry = package_registry.unwrap();
+            let package_path = package_registry.get_package_path(&package_name);
+            if package_path.is_some(){
+                let mut vat = Vat::read(package_path.unwrap())?;
+                vat.set_resolved_env(resolved_env.clone());
+                vat.resolve_env()?;
+                resolved_env.extend(vat.resolved_env);
+            }
+        }
+        Ok(resolved_env)
+    }
 }
 
 
@@ -203,15 +279,22 @@ impl PackageRegistry{
     }
 
     pub fn get_package_path(&self, package_name: &PackageName) -> Option<PathBuf>{
-        if package_name.version.is_none(){
-            return Some(self.main_brach_path.clone());
-        }else{
-            let version = package_name.version.as_ref().unwrap();
-            if self.versions.contains_key(&version){
-                return Some(self.versions[&version].package_path.clone());
+        match &package_name.version{
+            PackageNameVersion::Main => Some(self.main_brach_path.clone()),
+            PackageNameVersion::Latest => {
+                let version = self.versions.keys().max().unwrap();
+                if self.versions.contains_key(&version){
+                    return Some(self.versions[&version].package_path.clone());
+                }
+                None
+            }
+            PackageNameVersion::Version(version) => {
+                if self.versions.contains_key(&version){
+                    return Some(self.versions[&version].package_path.clone());
+                }
+                None
             }
         }
-        None
     }
 
 }

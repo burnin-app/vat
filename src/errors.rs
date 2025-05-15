@@ -41,6 +41,9 @@ pub enum RepositoryError{
     #[error("Repository not found: {0}")]
     RepositoryNotFound(String),
 
+    #[error("Package not found: {0}")]
+    PackageNotFound(String),
+
     #[error("Error reading the repository: {0}")]
     ReadError(String),
 
@@ -64,6 +67,10 @@ pub enum RepositoryError{
 
     #[error("Git Error: {0}")]
     GitError(#[from] GitError),
+
+    #[error("Package Error: {0}")]
+    PackageError(#[from] PackageError),
+
 }
 
 pub type RepositoryResult<T> = std::result::Result<T, RepositoryError>;
