@@ -7,6 +7,7 @@ use fs2::FileExt;
 use std::fs::OpenOptions;
 use std::io::Write;
 
+use crate::console::Console;
 use crate::Vat;
 use crate::config::VatConfig;
 use crate::errors::{RepositoryError, RepositoryResult};
@@ -26,6 +27,16 @@ pub enum PackageNameVersion{
     Version(Version),
     Latest,
     Main
+}
+
+impl std::fmt::Display for PackageNameVersion{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self{
+            PackageNameVersion::Version(version) => write!(f, "{}", version),
+            PackageNameVersion::Latest => write!(f, "latest"),
+            PackageNameVersion::Main => write!(f, "main"),
+        }
+    }
 }
 
 impl PackageName{
@@ -228,7 +239,6 @@ impl Repository{
             vat.set_resolved_env(self.resolve_append_env(append_env.unwrap())?);
         }
         vat.resolve_env()?;
-        dbg!(&vat.resolved_env);
         vat.run(command_name, detach)?;
         Ok(())
     }
@@ -239,17 +249,19 @@ impl Repository{
         for package_name in package_names{
             let package_registry = self.get_package_by_package_name(&package_name);
             if package_registry.is_none(){
-                return Ok(resolved_env);
+                Console::error(&format!("Error: Package `{}/{}` not found in repository", package_name.name, package_name.version));
+            }else{
+                Console::info(&format!("Resolving package `{}/{}`", package_name.name, package_name.version));
+                let package_registry = package_registry.unwrap();
+                let package_path = package_registry.get_package_path(&package_name);
+                if package_path.is_some(){
+                    let mut vat = Vat::read(package_path.unwrap())?;
+                    vat.set_resolved_env(resolved_env.clone());
+                    vat.resolve_env()?;
+                    resolved_env.extend(vat.resolved_env);
+                }
             }
 
-            let package_registry = package_registry.unwrap();
-            let package_path = package_registry.get_package_path(&package_name);
-            if package_path.is_some(){
-                let mut vat = Vat::read(package_path.unwrap())?;
-                vat.set_resolved_env(resolved_env.clone());
-                vat.resolve_env()?;
-                resolved_env.extend(vat.resolved_env);
-            }
         }
         Ok(resolved_env)
     }

@@ -179,7 +179,6 @@ fn main() -> Result<(), anyhow::Error> {
                 let run_result = repository.run(&package_name, &name, append, detach);
                 match run_result{
                     Ok(_) => {
-                        Console::success(&format!("Package run successfully"));
                     }
                     Err(e) => {
                         Console::error(&e.to_string());

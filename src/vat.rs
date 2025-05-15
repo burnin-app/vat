@@ -263,12 +263,14 @@ impl Vat{
                             }
                         }
                         command_process.envs(&resolved_env);
+                        Console::dim(&format!("Package Name: {}", self.package.name));
+                        Console::dim(&format!("Package Path: {}", self.package_path.to_string_lossy().to_string()));
+                        Console::info(&format!("Running command: {:?} from package: {}", command_name, self.package.name));
                         if detach{
                             command_process.spawn()?;
                         }else{
                             command_process.output()?;
                         }
-                        Console::success("Command executed successfully");
                         Ok(())
                     }else{
                         Err(PackageError::CommandNotFound(command_name.to_string()))

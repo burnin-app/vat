@@ -4,7 +4,7 @@ pub struct Console;
 
 impl Console{
     pub fn info(message: &str){
-        println!("{}", style(message).green());
+        println!("{}", style(message).white());
     }
 
     pub fn warn(message: &str){
@@ -37,5 +37,11 @@ impl Console{
         let message = "note: see more `vat.toml` keys and their definitions at https://github.com/burnin-app/vat";
         println!("{}", style(message).dim());
     }
+
+    pub fn error_display(message: &str){
+        let key = style(format!("Error:")).red();
+        println!("{} {}", key, message);
+    }
+
 }
 
