@@ -165,6 +165,11 @@ fn main() -> Result<(), anyhow::Error> {
                 let output = Vat::read(current_dir);
                 match output{
                     Ok(mut vat) => {
+                        if append.is_some(){
+                            let repository = Repository::load()?;
+                            let resolved_env = repository.resolve_append_env(append.unwrap())?;
+                            vat.set_resolved_env(resolved_env);
+                        }
                         vat.resolve_env()?;
                         vat.run(&name, detach)?;
                     }
