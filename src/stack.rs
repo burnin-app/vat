@@ -1,4 +1,5 @@
-use crate::repository::PackageName;
+use crate::repository::{PackageName, Repository};
+use crate::errors::{StackError, StackResult};
 use chrono::{DateTime, Utc};
 
 pub struct Stacks{
@@ -16,4 +17,25 @@ pub struct Stack{
     pub icon: Option<String>,
     pub modified_at: Option<DateTime<Utc>>,
     pub created_at: Option<DateTime<Utc>>,
+}
+
+
+impl Stack{
+    pub fn run(self) -> StackResult<()>{
+        let repository = Repository::load()?;
+        let run_result = repository.run(
+                                                        &self.package,
+                                                        &self.command,
+                                                        self.append,
+                                                        true
+                                                    );
+        match run_result{
+            Ok(_) => {
+                Ok(())
+            }
+            Err(e) => {
+                Err(StackError::from(e))
+            }
+        }
+    }
 }

@@ -5,7 +5,9 @@ use fs2::FileExt;
 use std::fs::OpenOptions;
 use semver::Version;
 use std::collections::HashMap;
+use std::process::Stdio;
 use dirs;
+use std::os::unix::process::CommandExt;
 
 use crate::command::Commands;
 use crate::package::Package;
@@ -267,6 +269,10 @@ impl Vat{
                         Console::dim(&format!("Package Path: {}", self.package_path.to_string_lossy().to_string()));
                         Console::info(&format!("Running command: {:?} from package: {}", command_name, self.package.name));
                         if detach{
+                            command_process
+                            .stdout(Stdio::null())
+                            .stderr(Stdio::null())
+                            .stdin(Stdio::null());
                             command_process.spawn()?;
                         }else{
                             command_process.output()?;

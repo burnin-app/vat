@@ -9,7 +9,6 @@ const CONFIG_FILE_NAME: &str = "vat.config";
 pub struct VatConfig{
     pub repository_path: PathBuf,   
     pub packages_path: PathBuf,
-
 }
 
 

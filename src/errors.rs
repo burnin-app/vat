@@ -1,5 +1,18 @@
 use thiserror::Error;
 
+
+#[derive(Error, Debug)]
+pub enum StackError{
+    #[error("CommandError: {0}")]
+    Command(String),
+
+    #[error("Repository Error: {0}")]
+    RepositoryError(#[from] RepositoryError)
+}
+
+pub type StackResult<T> = std::result::Result<T, StackError>;
+
+
 #[derive(Error, Debug)]
 pub enum PackageError{
     #[error("InitializationError: {0}")]

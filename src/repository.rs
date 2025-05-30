@@ -19,22 +19,22 @@ const VAT_REPOSITORY_FILE: &str = "vat_repository.toml";
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PackageName{
     pub name: String,
-    pub version: PackageNameVersion
+    pub version: PackageVersion
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PackageNameVersion{
+pub enum PackageVersion{
     Version(Version),
     Latest,
     Main
 }
 
-impl std::fmt::Display for PackageNameVersion{
+impl std::fmt::Display for PackageVersion{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self{
-            PackageNameVersion::Version(version) => write!(f, "{}", version),
-            PackageNameVersion::Latest => write!(f, "latest"),
-            PackageNameVersion::Main => write!(f, "main"),
+            PackageVersion::Version(version) => write!(f, "{}", version),
+            PackageVersion::Latest => write!(f, "latest"),
+            PackageVersion::Main => write!(f, "main"),
         }
     }
 }
@@ -46,38 +46,38 @@ impl PackageName{
         if parts.len() == 1{
             Self{
                 name: parts[0].to_string(),
-                version: PackageNameVersion::Main,
+                version: PackageVersion::Main,
             }
         }else if parts.len() == 2{
             let part_version = parts[1];
             if part_version == "latest"{
                 Self{
                     name: parts[0].to_string(),
-                    version: PackageNameVersion::Latest,
+                    version: PackageVersion::Latest,
                 }
             }else if part_version == "main"{
                 Self{
                     name: parts[0].to_string(),
-                    version: PackageNameVersion::Main,
+                    version: PackageVersion::Main,
                 }
             }else{
                 let version = Version::parse(part_version);
                 if version.is_err(){
                     Self{
                         name: parts[0].to_string(),
-                        version: PackageNameVersion::Latest,
+                        version: PackageVersion::Latest,
                     }
                 }else{
                     Self{
                         name: parts[0].to_string(),
-                        version: PackageNameVersion::Version(version.unwrap()),
+                        version: PackageVersion::Version(version.unwrap()),
                     }
                 }
             }
         }else{
             Self{
                 name: package_name.to_string(),
-                version: PackageNameVersion::Latest,
+                version: PackageVersion::Latest,
             }
         }
     }
@@ -292,15 +292,15 @@ impl PackageRegistry{
 
     pub fn get_package_path(&self, package_name: &PackageName) -> Option<PathBuf>{
         match &package_name.version{
-            PackageNameVersion::Main => Some(self.main_brach_path.clone()),
-            PackageNameVersion::Latest => {
+            PackageVersion::Main => Some(self.main_brach_path.clone()),
+            PackageVersion::Latest => {
                 let version = self.versions.keys().max().unwrap();
                 if self.versions.contains_key(&version){
                     return Some(self.versions[&version].package_path.clone());
                 }
                 None
             }
-            PackageNameVersion::Version(version) => {
+            PackageVersion::Version(version) => {
                 if self.versions.contains_key(&version){
                     return Some(self.versions[&version].package_path.clone());
                 }
