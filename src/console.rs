@@ -43,5 +43,17 @@ impl Console{
         println!("{} {}", key, message);
     }
 
+    pub fn resolved_env(key: &str, value: &str){
+        let key = style(format!("{}: ", key)).white();
+        let value = style(format!("{}", value)).dim();
+        println!("{} {}", key, value);
+    }
+
+    pub fn resolved_env_list(key: &str, value: &str){
+        let key = style(format!("{}: ", key)).green();
+        let value = style(format!("{}", value)).dim();
+        println!("{} {}", key, value);
+    }
+
 }
 

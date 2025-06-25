@@ -7,7 +7,6 @@ use semver::Version;
 use std::collections::HashMap;
 use std::process::Stdio;
 use dirs;
-use std::os::unix::process::CommandExt;
 
 use crate::command::Commands;
 use crate::package::Package;
@@ -204,13 +203,15 @@ impl Vat{
     pub fn resolve_env(&mut self) -> PackageResult<()>{
         // current os
         let current_os = std::env::consts::OS;
-        let mut resolved_env = HashMap::new();
+        let mut resolved_env = self.resolved_env.clone();
 
         let dilimeter = if current_os == "windows"{
             ";"
         }else{
             ":"
         };
+
+        Console::resolved_env_list(&self.package.name, "Resolving Environment Variables");
 
         if let Some(env) = &self.env{
             // process global env
@@ -238,6 +239,14 @@ impl Vat{
                     }
                 }
             }
+        }
+
+        // remove first dilimeter and add & at the end
+        for (key, value) in &mut resolved_env{
+            if value.starts_with(dilimeter){
+                *value = value.replace(dilimeter, "");
+            }
+            *value = format!("{}{}&", value, dilimeter);
         }
 
         self.resolved_env = resolved_env;
@@ -302,7 +311,11 @@ impl Vat{
                 std::env::var(key).unwrap_or_default()
             };
 
+            dbg!(&existing_env_values);
+
             let value = self.path_resolve(value);
+            Console::resolved_env(key, &value);
+
             if value.starts_with("append:"){
                 let value = value.replace("append:", "");
                 resolved_env.insert(key.clone(), format!("{}{}{}", existing_env_values, dilimeter, value));

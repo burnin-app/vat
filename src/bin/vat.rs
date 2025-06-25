@@ -33,13 +33,16 @@ enum Commands {
             #[arg(short = 'p', long, help = "Increment the patch version")]
             patch:bool,
         },
-    #[command(name = "publish", about = "Publish a Vat package to the repository")]
+    #[command(name = "publish", about = "Publish package to the repository")]
     Publish{
         #[arg(short = 'm', long, help = "The message to publish the package with")]
         message: String,
         // #[arg(short, long)]
         // remote: bool,
     },
+    // link
+    #[command(name = "link", about = "Link current package to the repository")]
+    Link,
     #[command(name = "run", about = "Run a Vat package")]
     Run{
         name: String,
@@ -49,6 +52,12 @@ enum Commands {
         append: Option<Vec<String>>,
         #[arg(short, long, default_value = "false")]
         detach: bool,
+    },
+    #[command(name = "list", about = "List all packages in the repository")]
+    List,
+    #[command(name = "remove", about = "Remove a package from the repository")]
+    Remove{
+        name: String,
     },
     Test,
 }
@@ -149,6 +158,58 @@ fn main() -> Result<(), anyhow::Error> {
                     }
                 }
                 Err(e) => {
+                    Console::error(&e.to_string());
+                }
+            }
+        }
+        Some(Commands::Link)=>{
+            let current_dir = std::env::current_dir()?;
+            let package_read = Vat::read(current_dir);
+            match package_read{
+                Ok(package)  => {
+                    let mut repository = Repository::load()?;
+                    let link_result = repository.link_package(package);
+                    match link_result{
+                        Ok(_) => {
+                            Console::success(&format!("Package linked successfully to the repository"));
+                        }
+                        Err(e) => {
+                            Console::error(&e.to_string());
+                        }
+                    }
+                }
+                Err(e)=> {
+                    Console::error(&e.to_string());
+                }
+            }
+        }
+        Some(Commands::List)=>{
+            let repository = Repository::load()?;
+            println!("Repository: {}", repository.repository_path.display());
+            let packages = repository.list_packages()?;
+            for (package_name, package_registry) in packages{
+                println!("{}", package_name);
+                for (version, _) in package_registry.versions{
+                    println!("  {}", version.to_string());
+                }
+            }
+        }
+        Some(Commands::Remove{name})=>{
+            let mut repository = Repository::load()?;
+            // ask for confirmation 
+            Console::info(&format!("Are you sure you want to remove {} from the repository? (y/n)", name));
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input)?;
+            if input.trim().to_lowercase() != "y" {
+                Console::info("Operation cancelled");
+                return Ok(());
+            }
+            let remove_result = repository.remove_package(&name);
+            match remove_result{
+                Ok(_)=>{
+                    Console::success(&format!("{} removed successfully from the repository", name));
+                }
+                Err(e)=>{
                     Console::error(&e.to_string());
                 }
             }

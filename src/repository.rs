@@ -145,6 +145,10 @@ impl Repository{
 
 
     pub fn link_package(&mut self, package: Vat) -> RepositoryResult<()>{
+        if self.packages.contains_key(&package.package.name){
+            return Err(RepositoryError::PackageAlreadyExists(format!("Package {} has already been linked", package.package.name)));
+        }
+
         self.packages.entry(package.package.name.clone())
             .or_insert_with(|| PackageRegistry::new())
             .link_package(package.package_path.clone());
@@ -153,6 +157,21 @@ impl Repository{
         Ok(())
     }
 
+    pub fn remove_package(&mut self, package_name: &str) -> RepositoryResult<()>{
+        self.packages.remove(package_name);
+        // remove the folder from the repository
+        let package_path = self.repository_path.join(package_name);
+        if package_path.exists(){
+            std::fs::remove_dir_all(package_path)?;
+        }
+        self.save()?;
+        Ok(())
+    }
+
+
+    pub fn list_packages(&self) -> RepositoryResult<HashMap<String, PackageRegistry>>{
+        Ok(self.packages.clone())
+    }
 
 
     pub fn package_exists(&self, package_name: &str, version: &Version) -> bool{
@@ -238,7 +257,9 @@ impl Repository{
         if append_env.is_some(){
             vat.set_resolved_env(self.resolve_append_env(append_env.unwrap())?);
         }
+        dbg!(&vat.resolved_env);
         vat.resolve_env()?;
+        dbg!(&vat.resolved_env);
         vat.run(command_name, detach)?;
         Ok(())
     }
