@@ -226,13 +226,13 @@ impl Vat{
                         self.process_env(key, env_var,&mut resolved_env, &dilimeter);
                     }
                 }
-            }else if current_os == "windowsi"{
+            }else if current_os == "windows"{
                 if let Some(windows_env) = &env.windows{
                     for (key, env_var) in windows_env{
                         self.process_env(key, env_var,&mut resolved_env, &dilimeter);
                     }
                 }
-            }else if current_os == "linuxk"{
+            }else if current_os == "linux"{
                 if let Some(linux_env) = &env.linux{
                     for (key, env_var) in linux_env{
                         self.process_env(key, env_var,&mut resolved_env, &dilimeter);
@@ -242,19 +242,20 @@ impl Vat{
         }
 
         // remove first dilimeter and add & at the end
+        #[cfg(not(target_os = "windows"))]
         for (key, value) in &mut resolved_env{
             if value.starts_with(dilimeter){
                 *value = value.replace(dilimeter, "");
             }
-            *value = format!("{}{}&", value, dilimeter);
         }
+
 
         self.resolved_env = resolved_env;
         Ok(())
     }
 
 
-    pub fn run(&self, command_name: &str, detach: bool) -> PackageResult<()>{
+    pub fn run(&self, command_name: &str, detach: bool, add_env: Option<HashMap<String, String>>) -> PackageResult<()>{
         if let Some(cmd) = &self.cmd{
             let command = cmd.get_command(command_name);
             if let Some(command) = command{
@@ -267,6 +268,9 @@ impl Vat{
                             command_process.arg(arg);
                         }
                         let mut resolved_env = self.resolved_env.clone();
+                        if let Some(add_env) = add_env{
+                            resolved_env.extend(add_env);
+                        }
                         #[cfg(target_os = "macos")]
                         {
                             if let Some(path) = resolved_env.get_mut("PATH") {
@@ -314,20 +318,26 @@ impl Vat{
             dbg!(&existing_env_values);
 
             let value = self.path_resolve(value);
-            Console::resolved_env(key, &value);
+            let mut _resolved_value = String::new();
 
             if value.starts_with("append:"){
                 let value = value.replace("append:", "");
+                _resolved_value = value.clone();
                 resolved_env.insert(key.clone(), format!("{}{}{}", existing_env_values, dilimeter, value));
             }else if value.starts_with("prepend:"){
                 let value = value.replace("prepend:", "");
+                _resolved_value = value.clone();
                 resolved_env.insert(key.clone(), format!("{}{}{}", value, dilimeter, existing_env_values));
             }else if value.starts_with("set:"){
                 let value = value.replace("set:", "");
+                _resolved_value = value.clone();
                 resolved_env.insert(key.clone(), value);
             }else{
+                _resolved_value = value.clone();
                 resolved_env.insert(key.clone(), format!("{}{}{}", existing_env_values, dilimeter, value));
             }
+
+            Console::resolved_env(key, &_resolved_value);
         }
     }
 
@@ -343,7 +353,7 @@ impl Vat{
 
 }
 
-fn expand_tilde_in_path(path: &str) -> String {
+pub fn expand_tilde_in_path(path: &str) -> String {
     let home = dirs::home_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
     path.split(':')
         .map(|p| {

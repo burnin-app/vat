@@ -232,7 +232,7 @@ fn main() -> Result<(), anyhow::Error> {
                             vat.set_resolved_env(resolved_env);
                         }
                         vat.resolve_env()?;
-                        vat.run(&name, detach)?;
+                        vat.run(&name, detach, None)?;
                     }
                     Err(e) => {
                         Console::error(&e.to_string());
@@ -242,7 +242,7 @@ fn main() -> Result<(), anyhow::Error> {
                 let repository = Repository::load()?;
                 let package_name = package.unwrap();
                 let package_name = PackageName::from_str(&package_name);
-                let run_result = repository.run(&package_name, &name, append, detach);
+                let run_result = repository.run(&package_name, &name, append, detach, None);
                 match run_result{
                     Ok(_) => {
                     }

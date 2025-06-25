@@ -1,6 +1,7 @@
 use crate::repository::{PackageName, Repository};
 use crate::errors::{StackError, StackResult};
 use chrono::{DateTime, Utc};
+use std::collections::HashMap;
 
 pub struct Stacks{
     pub stacks: Vec<Stack>
@@ -21,13 +22,14 @@ pub struct Stack{
 
 
 impl Stack{
-    pub fn run(self) -> StackResult<()>{
+    pub fn run(self, add_env: Option<HashMap<String, String>>) -> StackResult<()>{
         let repository = Repository::load()?;
         let run_result = repository.run(
                                                         &self.package,
                                                         &self.command,
                                                         self.append,
-                                                        true
+                                                        true,
+                                                        add_env
                                                     );
         match run_result{
             Ok(_) => {
