@@ -242,12 +242,12 @@ impl Vat{
         }
 
         // remove first dilimeter and add & at the end
-        #[cfg(not(target_os = "windows"))]
-        for (key, value) in &mut resolved_env{
-            if value.starts_with(dilimeter){
-                *value = value.replace(dilimeter, "");
-            }
-        }
+        // #[cfg(not(target_os = "windows"))]
+        // for (key, value) in &mut resolved_env{
+        //     if value.starts_with(dilimeter){
+        //         *value = value.replace(dilimeter, "");
+        //     }
+        // }
 
 
         self.resolved_env = resolved_env;
