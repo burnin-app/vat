@@ -19,7 +19,8 @@ const VAT_REPOSITORY_FILE: &str = "vat_repository.toml";
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PackageName{
     pub name: String,
-    pub version: PackageVersion
+    pub version: PackageVersion,
+    pub active: bool
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -47,6 +48,7 @@ impl PackageName{
             Self{
                 name: parts[0].to_string(),
                 version: PackageVersion::Main,
+                active: true,
             }
         }else if parts.len() == 2{
             let part_version = parts[1];
@@ -54,11 +56,13 @@ impl PackageName{
                 Self{
                     name: parts[0].to_string(),
                     version: PackageVersion::Latest,
+                    active: true,
                 }
             }else if part_version == "main"{
                 Self{
                     name: parts[0].to_string(),
                     version: PackageVersion::Main,
+                    active: true,
                 }
             }else{
                 let version = Version::parse(part_version);
@@ -66,11 +70,13 @@ impl PackageName{
                     Self{
                         name: parts[0].to_string(),
                         version: PackageVersion::Latest,
+                        active: true,
                     }
                 }else{
                     Self{
                         name: parts[0].to_string(),
                         version: PackageVersion::Version(version.unwrap()),
+                        active: true,
                     }
                 }
             }
@@ -78,6 +84,7 @@ impl PackageName{
             Self{
                 name: package_name.to_string(),
                 version: PackageVersion::Latest,
+                active: true,
             }
         }
     }
