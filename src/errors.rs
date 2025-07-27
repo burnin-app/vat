@@ -44,6 +44,9 @@ pub enum PackageError{
 
     #[error("Command not found: {0}")]
     CommandNotFound(String),
+
+    #[error("System time error: {0}")]
+    SystemTimeError(#[from] std::time::SystemTimeError),
 }
 
 pub type PackageResult<T> = std::result::Result<T, PackageError>;

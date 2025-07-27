@@ -5,15 +5,15 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Commands{
     #[serde(flatten)]
-    pub global: HashMap<String, Vec<String>>,
-    pub macos: Option<HashMap<String, Vec<String>>>,
-    pub linux: Option<HashMap<String, Vec<String>>>,
-    pub windows: Option<HashMap<String, Vec<String>>>,
+    pub global: HashMap<String, Command>,
+    pub macos: Option<HashMap<String, Command>>,
+    pub linux: Option<HashMap<String, Command>>,
+    pub windows: Option<HashMap<String, Command>>,
 }
 
 
 impl Commands{
-    pub fn get_command(&self, command: &str) -> Option<Vec<String>>{
+    pub fn get_command(&self, command: &str) -> Option<Command>{
         // get the global command
         let mut output = None;
         let global_command = self.global.get(command);
@@ -52,12 +52,13 @@ impl Commands{
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Command{
-    pub value: String
+    pub values: Vec<String>,
+    pub cwd: Option<String>,
 }
 
 impl Command{
-    pub fn new(value: String) -> Self{
-        Self{value}
+    pub fn new(values: Vec<String>) -> Self{
+        Self{values, cwd: None}
     }
 
 }

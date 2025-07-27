@@ -6,6 +6,8 @@ use std::fs::OpenOptions;
 use semver::Version;
 use std::collections::HashMap;
 use std::process::Stdio;
+use std::time::SystemTime;
+use std::fs::File;
 use dirs;
 
 use crate::command::Commands;
@@ -259,12 +261,12 @@ impl Vat{
         if let Some(cmd) = &self.cmd{
             let command = cmd.get_command(command_name);
             if let Some(command) = command{
-                let length = command.len();
+                let length = command.values.len();
                 if length > 0 {
-                    let first_commnad = command.first();
+                    let first_commnad = command.values.first();
                     if let Some(first_commnad) = first_commnad{
                         let mut command_process = std::process::Command::new(first_commnad);
-                        for arg in &command[1..] {
+                        for arg in &command.values[1..] {
                             command_process.arg(arg);
                         }
                         let mut resolved_env = self.resolved_env.clone();
@@ -282,11 +284,69 @@ impl Vat{
                         Console::dim(&format!("Package Path: {}", self.package_path.to_string_lossy().to_string()));
                         Console::info(&format!("Running command: {:?} from package: {}", command_name, self.package.name));
                         if detach{
-                            command_process
-                            .stdout(Stdio::null())
-                            .stderr(Stdio::null())
-                            .stdin(Stdio::null());
-                            command_process.spawn()?;
+                            // command_process
+                            // .stdout(Stdio::null())
+                            // .stderr(Stdio::null())
+                            // .stdin(Stdio::null());
+                            // command_process.spawn()?;
+
+                            #[cfg(target_os = "macos")]
+                            {
+                                let full_command = command.values.join(" ");
+                                std::process::Command::new("open")
+                                    .arg("-a")
+                                    .arg("Terminal")
+                                    .arg(format!("--args bash -c '{}; exec bash'", full_command))
+                                    .spawn()?;
+                            }
+
+                            #[cfg(target_os = "linux")]
+                            {
+                                let full_command = command.values.join(" ");
+                                std::process::Command::new("gnome-terminal")
+                                    .arg("--")
+                                    .arg("bash")
+                                    .arg("-c")
+                                    .arg(format!("{}; exec bash", full_command))
+                                    .spawn()?;
+                            }
+
+
+                            #[cfg(target_os = "windows")]
+                            {
+                                use std::env::temp_dir;
+
+                                // Build command as a single string
+                                let full_command = command.values.join(" ");
+
+                                // Build the .bat file content with env setup
+                                let mut bat_content = String::new();
+                                for (k, v) in &resolved_env {
+                                    // Properly escape and quote environment variable values
+                                    let escaped_value = v.replace("\"", "\"\"");
+                                    bat_content.push_str(&format!("set \"{}={}\"\n", k, escaped_value));
+                                }
+                                bat_content.push_str(&format!("{}\n", full_command));
+                                bat_content.push_str("pause\n"); // Optional: so terminal stays open
+
+                                // Write batch file to temp dir
+                                let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?.as_millis();
+                                let bat_path = temp_dir().join(format!("run_cmd_{}.bat", timestamp));
+                                let mut file = File::create(&bat_path)?;
+                                file.write_all(bat_content.as_bytes())?;
+
+                                // Launch cmd with the batch file
+                                let mut cmd_process = std::process::Command::new("cmd");
+                                cmd_process.args(&["/C", &format!("start {}", bat_path.display())]);
+                                
+                                // Set working directory if specified
+                                if let Some(cwd) = &command.cwd {
+                                    cmd_process.current_dir(cwd);
+                                }
+                                
+                                cmd_process.spawn()?;
+                            }
+                          
                         }else{
                             command_process.output()?;
                         }
