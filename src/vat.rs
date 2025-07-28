@@ -292,12 +292,22 @@ impl Vat{
 
                             #[cfg(target_os = "macos")]
                             {
-                                let full_command = command.values.join(" ");
-                                std::process::Command::new("open")
-                                    .arg("-a")
-                                    .arg("Terminal")
-                                    .arg(format!("--args bash -c '{}; exec bash'", full_command))
-                                    .spawn()?;
+                                // let full_command = command.values.join(" ");
+                                // std::process::Command::new("open")
+                                //     .arg("-a")
+                                //     .arg("Terminal")
+                                //     .arg(format!("--args bash -c '{}; exec bash'", full_command))
+                                //     .spawn()?;
+
+                                if command.cwd.is_some(){
+                                    command_process.current_dir(command.cwd.unwrap());
+                                }
+
+                                command_process
+                                .stdout(Stdio::null())
+                                .stderr(Stdio::null())
+                                .stdin(Stdio::null());
+                                command_process.spawn()?;
                             }
 
                             #[cfg(target_os = "linux")]
