@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use serde::{Serialize, Deserialize};
 use dirs_next::{config_dir, document_dir};
 use std::fs;
+use crate::repository::Repository;
 
 const CONFIG_FILE_NAME: &str = "vat.config";
 
@@ -48,7 +49,13 @@ impl VatConfig {
         }
 
         if !config.repo_exists(){
+            println!("Creating default repository");
             fs::create_dir_all(&config.repository_path)?;
+
+            // create a default repository
+            let mut repository = Repository::new();
+            repository.repository_path = config.repository_path.clone();
+            repository.save()?;
         }
 
         if !config.packages_exists(){

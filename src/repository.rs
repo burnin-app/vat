@@ -232,6 +232,11 @@ impl Repository{
 
     pub fn save(&self) -> RepositoryResult<Self> {
         let vat_repository_path = self.repository_path.join(VAT_REPOSITORY_FILE);
+        if !vat_repository_path.exists(){
+            // create the file
+            std::fs::File::create(&vat_repository_path)?;
+        }
+
         let mut file = OpenOptions::new()
             .write(true)
             .create(true)

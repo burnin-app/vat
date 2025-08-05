@@ -147,6 +147,7 @@ fn main() -> Result<(), anyhow::Error> {
             match package_read{
                 Ok(package) => {
                     let mut repository = Repository::load()?;
+
                     let publish_result = repository.publish(package, &message);
                     match publish_result{
                         Ok(_) => {
