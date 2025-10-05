@@ -22,14 +22,15 @@ pub struct Stack{
 
 
 impl Stack{
-    pub fn run(self, add_env: Option<HashMap<String, String>>) -> StackResult<()>{
+    pub fn run(self, add_env: Option<HashMap<String, String>>, additonal_cmds: Option<Vec<String>>) -> StackResult<()>{
         let repository = Repository::load()?;
         let run_result = repository.run(
                                                         &self.package,
                                                         &self.command,
                                                         self.append,
                                                         true,
-                                                        add_env
+                                                        add_env,
+                                                        additonal_cmds
                                                     );
         match run_result{
             Ok(_) => {

@@ -254,8 +254,12 @@ impl Repository{
     }
 
 
-    pub fn run(&self, package_name: &PackageName, command_name: &str, append_env: Option<Vec<PackageName>>, detach: bool
-        , add_env: Option<HashMap<String, String>>
+    pub fn run(&self, package_name: &PackageName,
+        command_name: &str,
+        append_env: Option<Vec<PackageName>>,
+        detach: bool,
+        add_env: Option<HashMap<String, String>>,
+        additonal_cmds: Option<Vec<String>>
     ) -> RepositoryResult<()>{
         let package_registry = self.get_package_by_package_name(package_name);
         if package_registry.is_none(){
@@ -274,7 +278,7 @@ impl Repository{
         dbg!(&vat.resolved_env);
         vat.resolve_env()?;
         dbg!(&vat.resolved_env);
-        vat.run(command_name, detach, add_env)?;
+        vat.run(command_name, detach, add_env, additonal_cmds)?;
         Ok(())
     }
 

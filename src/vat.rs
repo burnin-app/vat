@@ -5,7 +5,6 @@ use fs2::FileExt;
 use std::fs::OpenOptions;
 use semver::Version;
 use std::collections::HashMap;
-use std::process::Stdio;
 use std::time::SystemTime;
 use std::fs::File;
 use dirs;
@@ -257,7 +256,7 @@ impl Vat{
     }
 
 
-    pub fn run(&self, command_name: &str, detach: bool, add_env: Option<HashMap<String, String>>) -> PackageResult<()>{
+    pub fn run(&self, command_name: &str, detach: bool, add_env: Option<HashMap<String, String>>, additional_cmds: Option<Vec<String>>) -> PackageResult<()>{
         if let Some(cmd) = &self.cmd{
             let command = cmd.get_command(command_name);
             if let Some(command) = command{
@@ -327,17 +326,42 @@ impl Vat{
                                 use std::env::temp_dir;
 
                                 // Build command as a single string
-                                let full_command = command.values.join(" ");
+                                let mut full_command = command.values.join(" ");
+                                
+                                // Add additional commands if provided
+                                if let Some(additional_cmds) = additional_cmds {
+                                    for additional_cmd in additional_cmds {
+                                        // Ensure the additional command is not processed through path_resolve
+                                        let clean_cmd = additional_cmd.trim();
+                                        // Escape % characters to prevent Windows environment variable expansion
+                                        let escaped_cmd = clean_cmd.replace("%", "%%");
+                                        // Quote the additional command if it contains spaces
+                                        let quoted_cmd = if escaped_cmd.contains(' ') {
+                                            format!("\"{}\"", escaped_cmd)
+                                        } else {
+                                            escaped_cmd.to_string()
+                                        };
+                                        full_command = format!("{} {}", full_command, quoted_cmd);
+                                    }
+                                }
 
                                 // Build the .bat file content with env setup
                                 let mut bat_content = String::new();
                                 for (k, v) in &resolved_env {
                                     // Properly escape and quote environment variable values
-                                    let escaped_value = v.replace("\"", "\"\"");
+                                    let escaped_value = v.replace("\"", "\"\""); 
                                     bat_content.push_str(&format!("set \"{}={}\"\n", k, escaped_value));
                                 }
+                                // Debug: print environment variables
+                                println!("DEBUG: Environment variables:");
+                                for (k, v) in &resolved_env {
+                                    println!("  {} = {}", k, v);
+                                }
+                                // Debug: print the full command before writing to batch file
+                                println!("DEBUG: Full command: {}", full_command);
                                 bat_content.push_str(&format!("{}\n", full_command));
-                                bat_content.push_str("pause\n"); // Optional: so terminal stays open
+                                // bat_content.push_str("pause\n"); // Optional: so terminal stays open
+                                bat_content.push_str("exit\n"); // Close the terminal when finished
 
                                 // Write batch file to temp dir
                                 let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?.as_millis();
@@ -358,6 +382,12 @@ impl Vat{
                             }
                           
                         }else{
+                            // Add additional commands to the process for non-detached execution
+                            if let Some(additional_cmds) = additional_cmds {
+                                for additional_cmd in additional_cmds {
+                                    command_process.arg(additional_cmd);
+                                }
+                            }
                             command_process.output()?;
                         }
                         Ok(())
