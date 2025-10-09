@@ -303,9 +303,9 @@ impl Vat{
                                 }
 
                                 command_process
-                                .stdout(Stdio::null())
-                                .stderr(Stdio::null())
-                                .stdin(Stdio::null());
+                                .stdout(std::process::Stdio::null())
+                                .stderr(std::process::Stdio::null())
+                                .stdin(std::process::Stdio::null());
                                 command_process.spawn()?;
                             }
 
