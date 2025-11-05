@@ -295,7 +295,7 @@ impl Repository{
 
         let output_env : HashMap<String, String> = HashMap::new();
         let resolved_output = self.resolve_append_env(package_names);
-        if(resolved_output.is_err()){
+        if resolved_output.is_err(){
             return output_env;
         }else{
             resolved_output.unwrap()
