@@ -1,4 +1,4 @@
-use crate::repository::{self, PackageName, Repository};
+use crate::repository::{PackageName, Repository};
 use crate::errors::{StackError, StackResult};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
