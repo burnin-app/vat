@@ -1,4 +1,4 @@
-use crate::repository::{PackageName, Repository};
+use crate::repository::{self, PackageName, Repository};
 use crate::errors::{StackError, StackResult};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
@@ -40,5 +40,11 @@ impl Stack{
                 Err(StackError::from(e))
             }
         }
+    }
+
+    pub fn env_from_stack(self) -> StackResult<HashMap<String, String>>{
+        let repository = Repository::load()?;
+        let result_env = repository.resolve_stack_env(self);
+        Ok(result_env)
     }
 }

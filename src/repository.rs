@@ -9,6 +9,7 @@ use std::io::Write;
 
 use crate::console::Console;
 use crate::Vat;
+use crate::Stack;
 use crate::config::VatConfig;
 use crate::errors::{RepositoryError, RepositoryResult};
 use crate::git::Git;
@@ -280,6 +281,27 @@ impl Repository{
         dbg!(&vat.resolved_env);
         vat.run(command_name, detach, add_env, additonal_cmds)?;
         Ok(())
+    }
+
+
+    pub fn resolve_stack_env(&self, stack: Stack) ->  HashMap<String, String>{
+        let mut package_names : Vec<PackageName> = Vec::new(); 
+        // append main package
+        package_names.push(stack.package);
+        if stack.append.is_some(){
+            let append = stack.append.unwrap();
+            package_names.extend(append);
+        }
+
+        let output_env : HashMap<String, String> = HashMap::new();
+        let resolved_output = self.resolve_append_env(package_names);
+        if(resolved_output.is_err()){
+            return output_env;
+        }else{
+            resolved_output.unwrap()
+        }
+        
+
     }
 
 
