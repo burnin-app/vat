@@ -52,7 +52,7 @@ impl PackageName{
                 active: true,
             }
         }else if parts.len() == 2{
-            let part_version = parts[1];
+            let part_version = parts[1].to_lowercase();
             if part_version == "latest"{
                 Self{
                     name: parts[0].to_string(),
@@ -66,7 +66,7 @@ impl PackageName{
                     active: true,
                 }
             }else{
-                let version = Version::parse(part_version);
+                let version = Version::parse(&part_version);
                 if version.is_err(){
                     Self{
                         name: parts[0].to_string(),
@@ -355,7 +355,11 @@ impl PackageRegistry{
         match &package_name.version{
             PackageVersion::Main => Some(self.main_brach_path.clone()),
             PackageVersion::Latest => {
-                let version = self.versions.keys().max().unwrap();
+                let version = self.versions.keys().max();
+                if version.is_none(){
+                    return None
+                }
+                let version = version.unwrap();
                 if self.versions.contains_key(&version){
                     return Some(self.versions[&version].package_path.clone());
                 }

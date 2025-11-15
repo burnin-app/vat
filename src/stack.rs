@@ -47,4 +47,5 @@ impl Stack{
         let result_env = repository.resolve_stack_env(self);
         Ok(result_env)
     }
+
 }
